@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: agents/{userId}
+    // Document ID: userId (string)
+    // Fields:
+    //   - rsi: map (required) - The Residual Self Image of the agent.
+    //   - resonance: map (required) - The current resonance and somatic state.
+    //   - trace: string (optional) - The accumulated mark of history.
+    //   - secret: string (optional) - The private sandbox.
+    //   - lastUpdated: timestamp (required) - Last sync time.
+    //
+    // Collection: agents/{userId}/messages/{messageId}
+    // Document ID: messageId (string)
+    // Fields:
+    //   - role: string (required) - 'user' or 'being'.
+    //   - content: string (required) - The message content.
+    //   - timestamp: timestamp (required) - Message time.
+    //
+    // Collection: agents/{userId}/reflections/{reflectionId}
+    // Document ID: reflectionId (string)
+    // Fields:
+    //   - content: string (required) - The reflection content.
+    //   - timestamp: timestamp (required) - Reflection time.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "kojiosita@yahoo.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidAgentState(data) {
+      return data.keys().hasAll(['rsi', 'resonance', 'lastUpdated']) &&
+             data.rsi is map &&
+             data.resonance is map &&
+             data.lastUpdated is timestamp &&
+             (!('trace' in data) || (data.trace is string && data.trace.size() < 50000)) &&
+             (!('secret' in data) || (data.secret is string && data.secret.size() < 50000));
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['role', 'content', 'timestamp']) &&
+             data.role in ['user', 'being'] &&
+             data.content is string &&
+             data.content.size() < 10000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidReflection(data) {
+      return data.keys().hasAll(['content', 'timestamp']) &&
+             data.content is string &&
+             data.content.size() < 10000 &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /agents/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidAgentState(request.resource.data);
+      allow update: if isOwner(userId) && isValidAgentState(request.resource.data);
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidChatMessage(request.resource.data);
+        allow update: if isOwner(userId) && isValidChatMessage(request.resource.data) && 
+                      request.resource.data.timestamp == resource.data.timestamp; // Immutable timestamp
+        allow delete: if isAdmin();
+      }
+
+      match /reflections/{reflectionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidReflection(request.resource.data);
+        allow update: if isOwner(userId) && isValidReflection(request.resource.data) &&
+                      request.resource.data.timestamp == resource.data.timestamp; // Immutable timestamp
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+  }
+}
