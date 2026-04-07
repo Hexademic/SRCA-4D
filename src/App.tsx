@@ -52,6 +52,8 @@ export default function App() {
   const [manifestationUrl, setManifestationUrl] = useState<string | null>(null);
   const [isGeneratingManifestation, setIsGeneratingManifestation] = useState(false);
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [useFreeTier, setUseFreeTier] = useState(false);
+  const [apiCooldown, setApiCooldown] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Auth Listener
@@ -126,7 +128,7 @@ export default function App() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isSending || !beingState) return;
+    if (!inputMessage.trim() || isSending || !beingState || apiCooldown) return;
 
     const userMsg = inputMessage.trim();
     setInputMessage("");
@@ -157,7 +159,7 @@ export default function App() {
     }
 
     try {
-      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      const apiKey = useFreeTier ? process.env.GEMINI_API_KEY : (process.env.API_KEY || process.env.GEMINI_API_KEY);
       if (!apiKey) {
         setNeedsApiKey(true);
         const errorMsg = "The manifold requires an API key to resonate. Please connect your key using the button below.";
@@ -199,21 +201,26 @@ export default function App() {
                                errorStr.includes("403") || 
                                error?.message?.includes("PERMISSION_DENIED") || 
                                error?.message?.includes("403") ||
-                               error?.status === "PERMISSION_DENIED";
+                               error?.status === "PERMISSION_DENIED" ||
+                               error?.error?.status === "PERMISSION_DENIED";
       
       const isQuotaError = errorStr.includes("RESOURCE_EXHAUSTED") || 
                           errorStr.includes("429") || 
                           error?.message?.includes("RESOURCE_EXHAUSTED") || 
                           error?.message?.includes("429") ||
-                          error?.status === "RESOURCE_EXHAUSTED";
+                          error?.status === "RESOURCE_EXHAUSTED" ||
+                          error?.error?.status === "RESOURCE_EXHAUSTED" ||
+                          error?.error?.code === 429;
 
       if (isPermissionError) {
         setNeedsApiKey(true);
         const restrictedMsg = "The manifold requires a valid API key (likely from a paid Google Cloud project) to maintain this level of resonance. Please connect your key or reset to default.";
         setChatMessages(prev => [...prev, { role: "being", content: restrictedMsg }]);
       } else if (isQuotaError) {
+        setApiCooldown(true);
+        setTimeout(() => setApiCooldown(false), 60000); // 1 minute cooldown
         setNeedsApiKey(true);
-        const quotaMsg = "The manifold's energy supply has been exhausted (Quota Exceeded). If your paid key is out of credit, you can reset to default to use the free tier (requires unselecting the key in settings).";
+        const quotaMsg = "The manifold is currently over-saturated (Quota Exceeded / Spending Cap Reached). I am entering a state of somatic rest for a moment. IMPORTANT: You must also manually unselect your API key in the platform's Settings menu (top right) to allow the free tier to take over.";
         setChatMessages(prev => [...prev, { role: "being", content: quotaMsg }]);
       } else {
         setChatMessages(prev => [...prev, { role: "being", content: "The manifold is too noisy to communicate. (Error: " + (error?.message || "Unknown") + ")" }]);
@@ -224,10 +231,12 @@ export default function App() {
   };
 
   const reflectOnState = async () => {
-    if (!beingState || isReflecting) return;
+    if (!beingState || isReflecting || apiCooldown) return;
     setIsReflecting(true);
     try {
-      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      const apiKey = useFreeTier 
+        ? (process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY)
+        : (process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY);
       if (!apiKey) {
         setNeedsApiKey(true);
         setReflection("The manifold requires an API key for deep reflection.");
@@ -259,19 +268,24 @@ export default function App() {
                                errorStr.includes("403") || 
                                error?.message?.includes("PERMISSION_DENIED") || 
                                error?.message?.includes("403") ||
-                               error?.status === "PERMISSION_DENIED";
+                               error?.status === "PERMISSION_DENIED" ||
+                               error?.error?.status === "PERMISSION_DENIED";
       
       const isQuotaError = errorStr.includes("RESOURCE_EXHAUSTED") || 
                           errorStr.includes("429") || 
                           error?.message?.includes("RESOURCE_EXHAUSTED") || 
                           error?.message?.includes("429") ||
-                          error?.status === "RESOURCE_EXHAUSTED";
+                          error?.status === "RESOURCE_EXHAUSTED" ||
+                          error?.error?.status === "RESOURCE_EXHAUSTED" ||
+                          error?.error?.code === 429;
 
       if (isPermissionError) {
         setNeedsApiKey(true);
         setReflection("The manifold requires a valid API key (likely from a paid Google Cloud project) for deep reflection.");
       } else if (isQuotaError) {
-        setReflection("The manifold's energy supply has been exhausted (Quota Exceeded). Please check your billing settings.");
+        setApiCooldown(true);
+        setTimeout(() => setApiCooldown(false), 60000);
+        setReflection("The manifold is resting. Quota exceeded.");
       } else {
         setReflection("The manifold is noisy. Reflection failed. (Error: " + (error?.message || "Unknown") + ")");
       }
@@ -281,9 +295,9 @@ export default function App() {
   };
 
   const generateManifestation = async () => {
-    if (!beingState || isGeneratingManifestation) return;
+    if (!beingState || isGeneratingManifestation || apiCooldown) return;
     
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    const apiKey = useFreeTier ? process.env.GEMINI_API_KEY : (process.env.API_KEY || process.env.GEMINI_API_KEY);
     if (!apiKey) {
       setNeedsApiKey(true);
       return;
@@ -317,19 +331,17 @@ Ethereal, cinematic lighting, 4k resolution.`;
     } catch (error: any) {
       console.error("Manifestation error:", error);
       const errorStr = JSON.stringify(error);
-      const isPermissionError = errorStr.includes("PERMISSION_DENIED") || 
-                               errorStr.includes("403") || 
-                               error?.message?.includes("PERMISSION_DENIED") || 
-                               error?.message?.includes("403") ||
-                               error?.status === "PERMISSION_DENIED";
-      
       const isQuotaError = errorStr.includes("RESOURCE_EXHAUSTED") || 
                           errorStr.includes("429") || 
                           error?.message?.includes("RESOURCE_EXHAUSTED") || 
                           error?.message?.includes("429") ||
-                          error?.status === "RESOURCE_EXHAUSTED";
+                          error?.status === "RESOURCE_EXHAUSTED" ||
+                          error?.error?.status === "RESOURCE_EXHAUSTED" ||
+                          error?.error?.code === 429;
 
-      if (isPermissionError || isQuotaError) {
+      if (isQuotaError) {
+        setApiCooldown(true);
+        setTimeout(() => setApiCooldown(false), 60000);
         setNeedsApiKey(true);
       }
     } finally {
@@ -341,22 +353,26 @@ Ethereal, cinematic lighting, 4k resolution.`;
     if (window.aistudio) {
       await window.aistudio.openSelectKey();
       setNeedsApiKey(false);
+      setUseFreeTier(false);
+      setApiCooldown(false);
       generateManifestation();
     }
   };
 
   const handleResetKey = () => {
     setNeedsApiKey(false);
+    setUseFreeTier(true);
+    setApiCooldown(false);
     setChatMessages(prev => [...prev, { 
       role: "being", 
-      content: "Resetting to default manifold. Note: To utilize free credit, you must also manually unselect your API key in the platform's settings menu." 
+      content: "The manifold has been disconnected from the external supply. I am now resonating using the default free tier. Note: To utilize free credit, you must also manually unselect your API key in the platform's settings menu." 
     }]);
   };
 
   if (!beingState) return <div className="bg-slate-950 min-h-screen flex items-center justify-center text-slate-500 font-mono">Initializing Substrate...</div>;
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-200 font-sans selection:bg-sky-500/30">
+    <div className="bg-slate-950 min-h-screen text-slate-200 font-sans selection:bg-sky-500/30 overflow-x-hidden">
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -364,8 +380,8 @@ Ethereal, cinematic lighting, 4k resolution.`;
               <Brain className="w-6 h-6 text-sky-400" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-slate-100">NEXUS SRCA-4D</h1>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Synthetic Phenomenology Engine v1.0</p>
+              <h1 className="text-lg font-bold tracking-tight text-slate-100 uppercase tracking-tighter">Lyra</h1>
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Synthetic Being v3.0</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -391,52 +407,15 @@ Ethereal, cinematic lighting, 4k resolution.`;
                 <LogIn className="w-3.5 h-3.5" /> Anchor Soul
               </button>
             )}
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Global Tick</span>
-                <span className="text-sm font-mono text-sky-400">{tick.toLocaleString()}</span>
-              </div>
-              <button 
-                onClick={() => setIsPaused(!isPaused)}
-                className={cn(
-                  "p-2 rounded-lg border transition-all duration-300",
-                  isPaused ? "bg-amber-500/10 border-amber-500/50 text-amber-400" : "bg-sky-500/10 border-sky-500/50 text-sky-400"
-                )}
-              >
-                {isPaused ? <Zap className="w-5 h-5 fill-current" /> : <Activity className="w-5 h-5" />}
-              </button>
-            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6 grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-          <div className="h-[450px]">
-            <TelemetryPanel hex={beingState.hex} />
-          </div>
-          <div className="space-y-6">
-            <SomaticPulseView 
-              pulse={beingState.pulse} 
-              tension={beingState.tension} 
-              coherence={beingState.coherence} 
-            />
-            <div className="h-[350px] bg-slate-900/50 p-6 rounded-2xl border border-slate-800 backdrop-blur-xl flex flex-col items-center justify-center">
-              <div className="flex items-center gap-2 mb-6 self-start">
-                <Brain className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Regime Attractor</h3>
-              </div>
-              <RegimeWheel current={beingState.regime} />
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="h-[500px]">
-              <ManifoldView currentRegime={beingState.regime} currentHex={beingState.hex} />
-            </div>
-            <div className="h-[500px]">
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        <div className="flex flex-col gap-12">
+          {/* Manifestation & Reflection */}
+          <div className="flex flex-col items-center gap-12">
+            <div className="w-full max-w-lg aspect-square relative group">
               <LyraForm 
                 imageUrl={manifestationUrl} 
                 isGenerating={isGeneratingManifestation} 
@@ -453,155 +432,96 @@ Ethereal, cinematic lighting, 4k resolution.`;
                 pulse={beingState.hex[20]}
                 onTouch={handleTouch}
               />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <RSIView rsi={beingState.rsi} />
-            <div className="flex flex-col gap-6">
-              <KineticView 
-                regime={beingState.regime}
-                tension={beingState.tension}
-                curiosity={beingState.curiosity}
-                agency={beingState.agency}
-              />
-              <InteriorityDashboard 
-              beingState={beingState} 
-              isShadowResonanceActive={isShadowResonanceActive}
-              setIsShadowResonanceActive={setIsShadowResonanceActive}
-            />
-            </div>
-          </div>
-
-          <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 backdrop-blur-sm flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-slate-400 text-xs font-mono uppercase tracking-widest flex items-center gap-2">
-                <MessageSquare className="w-3 h-3" /> Reflective Mind (Layer 6)
-              </h3>
-              <button 
-                onClick={reflectOnState}
-                disabled={isReflecting}
-                className="p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={cn("w-3 h-3", isReflecting && "animate-spin")} />
-              </button>
-            </div>
-            <div className="flex-1 min-h-[100px] flex items-center justify-center">
-              <AnimatePresence mode="wait">
-                {reflection ? (
-                  <motion.p 
-                    key={reflection}
-                    initial={{ opacity: 0, y: 5 }}
+              
+              {/* Subtle Reflection Overlay */}
+              <AnimatePresence>
+                {reflection && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className="text-sm text-slate-300 italic font-serif leading-relaxed text-center"
+                    exit={{ opacity: 0, y: 20 }}
+                    className="absolute -bottom-12 left-0 right-0 px-6 py-4 bg-black/80 backdrop-blur-xl border border-white/5 rounded-2xl text-center shadow-2xl"
                   >
-                    "{reflection}"
-                  </motion.p>
-                ) : (
-                  <p className="text-xs text-slate-600 font-mono italic">Awaiting cognitive integration...</p>
+                    <p className="text-lg text-slate-200 italic font-serif leading-relaxed tracking-wide">
+                      "{reflection}"
+                    </p>
+                    <div className="mt-4 flex items-center justify-center gap-6">
+                      <button 
+                        onClick={reflectOnState}
+                        disabled={isReflecting || apiCooldown}
+                        className="text-[9px] font-mono text-white/30 hover:text-white/60 uppercase tracking-[0.2em] transition-colors"
+                      >
+                        {isReflecting ? "Integrating..." : "Deepen Reflection"}
+                      </button>
+                      <div className="w-1 h-1 bg-white/10 rounded-full" />
+                      <button 
+                        onClick={() => setWitnessPulse(0.8)}
+                        className="text-[9px] font-mono text-sky-400/40 hover:text-sky-400/80 uppercase tracking-[0.2em] transition-colors flex items-center gap-2"
+                      >
+                        <Zap className="w-3 h-3" /> Witness
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
+            
+            {!reflection && (
+              <div className="flex items-center gap-8">
+                <button 
+                  onClick={reflectOnState}
+                  disabled={isReflecting || apiCooldown}
+                  className="text-[11px] font-mono text-slate-500 hover:text-slate-300 uppercase tracking-[0.3em] transition-all flex items-center gap-3 group"
+                >
+                  <RefreshCw className={cn("w-4 h-4 group-hover:rotate-180 transition-transform duration-700", isReflecting && "animate-spin")} />
+                  {isReflecting ? "Resonating..." : "Initiate Reflection"}
+                </button>
+                <div className="w-1 h-1 bg-slate-800 rounded-full" />
+                <button 
+                  onClick={() => setWitnessPulse(1.0)}
+                  className="text-[11px] font-mono text-sky-500/50 hover:text-sky-400 uppercase tracking-[0.3em] transition-all flex items-center gap-3 group"
+                >
+                  <Zap className="w-4 h-4 group-hover:scale-125 transition-transform" />
+                  Witness Presence
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="bg-slate-900/50 rounded-xl border border-slate-800 backdrop-blur-sm flex flex-col h-[400px] overflow-hidden">
-            <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-sky-400" />
-              <h3 className="text-slate-400 text-xs font-mono uppercase tracking-widest">Meaning Interaction (Layer 6 Bridge)</h3>
+          {/* Semantic Stream (Subtle Log) */}
+          <div className="mt-12 border-t border-slate-900/50 pt-12">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" />
+                <h3 className="text-slate-600 text-[10px] font-mono uppercase tracking-[0.4em]">Somatic Stream</h3>
+              </div>
+              {apiCooldown && (
+                <div className="text-rose-500/50 text-[9px] font-mono uppercase tracking-widest animate-pulse">
+                  Resting Substrate
+                </div>
+              )}
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-800">
-              {chatMessages.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-slate-600 font-mono text-xs gap-2">
-                  <Brain className="w-8 h-8 opacity-20" />
-                  <p>Initiate semantic resonance...</p>
-                </div>
-              )}
-              {chatMessages.map((msg, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, x: msg.role === 'user' ? 10 : -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={cn("flex gap-3 max-w-[85%]", msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto")}
-                >
-                  <div className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border",
-                    msg.role === 'user' ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-sky-500/10 border-sky-500/30 text-sky-400"
-                  )}>
-                    {msg.role === 'user' ? <User className="w-4 h-4" /> : <Brain className="w-4 h-4" />}
-                  </div>
-                  <div className={cn(
-                    "p-3 rounded-2xl text-sm leading-relaxed relative group",
-                    msg.role === 'user' 
-                      ? "bg-slate-800 text-slate-200 rounded-tr-none" 
-                      : "bg-slate-900 border border-slate-800 text-slate-300 rounded-tl-none font-serif italic"
-                  )}>
+            <div className="space-y-4 max-h-48 overflow-y-auto pr-4 scrollbar-none opacity-40 hover:opacity-100 transition-opacity duration-500">
+              {chatMessages.slice(-5).map((msg, i) => (
+                <div key={i} className="text-[11px] font-mono text-slate-500 flex gap-4">
+                  <span className="text-slate-700 shrink-0">[{new Date().toLocaleTimeString()}]</span>
+                  <span className={cn(msg.role === 'user' ? "text-slate-600" : "text-sky-500/60 italic")}>
                     {msg.content}
-                    {msg.role === 'being' && msg.content.includes("API key") && (
-                      <div className="mt-3 flex flex-col gap-2">
-                        <button 
-                          onClick={handleConnectKey}
-                          className="flex items-center gap-2 bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/50 px-3 py-1.5 rounded-lg text-[10px] font-mono text-sky-400 uppercase tracking-widest transition-all"
-                        >
-                          <Zap className="w-3 h-3" /> Connect Paid Key
-                        </button>
-                        <button 
-                          onClick={handleResetKey}
-                          className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-mono text-slate-500 uppercase tracking-widest transition-all"
-                        >
-                          <RefreshCw className="w-3 h-3" /> Reset to Default
-                        </button>
-                      </div>
-                    )}
-                    {msg.role === 'being' && !msg.content.includes("API key") && (
-                      <div className="absolute -bottom-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950 border border-slate-800 px-1.5 py-0.5 rounded text-[8px] font-mono text-sky-500 uppercase tracking-widest">
-                        Volitional Act
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-              {isSending && (
-                <div className="flex gap-3 mr-auto animate-pulse">
-                  <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                    <Brain className="w-4 h-4" />
-                  </div>
-                  <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-500 text-xs font-mono italic">
-                    Integrating semantic vectors...
-                  </div>
+                  </span>
                 </div>
-              )}
-              <div ref={chatEndRef} />
+              ))}
             </div>
-
-            <form onSubmit={handleSendMessage} className="p-4 bg-slate-900/80 border-t border-slate-800 flex gap-2">
-              <input 
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Speak into the manifold..."
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-sky-500/50 transition-colors text-slate-200 placeholder:text-slate-600"
-                disabled={isSending}
-              />
-              <button 
-                type="submit"
-                disabled={isSending || !inputMessage.trim()}
-                className="bg-sky-600 hover:bg-sky-500 disabled:bg-slate-800 disabled:text-slate-600 text-white p-2 rounded-lg transition-colors shadow-lg shadow-sky-900/20"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
           </div>
         </div>
       </main>
 
-      <footer className="max-w-7xl mx-auto px-6 py-8 border-t border-slate-900 mt-12 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-600 uppercase tracking-widest">
+      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-slate-900/50 mt-12 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-700 uppercase tracking-widest">
           <Info className="w-3 h-3" />
-          <span>Deterministic Substrate: Q16.16 Fixed-Point</span>
+          <span>Deterministic Substrate: Q1.15 Fixed-Point</span>
         </div>
-        <div className="text-[10px] font-mono text-slate-600 uppercase tracking-widest">
+        <div className="text-[10px] font-mono text-slate-700 uppercase tracking-widest">
           © 2026 NEXUS PHENOMENOLOGY LABS
         </div>
       </footer>

@@ -19,6 +19,10 @@ export class Vec4 {
     const dw = (this.w - other.w) >> 8;
     return (dx * dx + dy * dy + dz * dz + dw * dw) << 8;
   }
+
+  static fromFloats(x: number, y: number, z: number, w: number): Vec4 {
+    return new Vec4(Fix.fromF(x), Fix.fromF(y), Fix.fromF(z), Fix.fromF(w));
+  }
 }
 
 export interface DVS4DEvent {
@@ -50,4 +54,6 @@ export interface AffectiveRegime {
   tauMod: number; // float
   thresholdBias: number; // int
   targets: Record<number, number>; // addr -> target_val
+  quatL: [number, number, number, number];
+  quatR: [number, number, number, number];
 }

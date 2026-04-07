@@ -27,22 +27,8 @@ export function useAgent(userId?: string) {
     const unsubscribe = onSnapshot(agentDocRef, (docSnap) => {
       if (docSnap.exists() && !isLoaded) {
         const data = docSnap.data();
-        if (data.rsi && beingRef.current) {
-          // Deep merge or specific property updates
-          const agent = (beingRef.current as any).agent;
-          
-          // Restore RSI
-          Object.assign(agent.rsi, data.rsi);
-          
-          // Restore Resonance
-          if (data.resonance) {
-            Object.assign(agent.resonance, data.resonance);
-          }
-          
-          // Restore Trace/Secret
-          if (data.trace) (beingRef.current as any).trace = data.trace;
-          if (data.secret) (beingRef.current as any).secret = data.secret;
-
+        if (beingRef.current) {
+          beingRef.current.loadState(data);
           setBeingState(beingRef.current.getState());
           setIsLoaded(true);
         }
@@ -58,29 +44,10 @@ export function useAgent(userId?: string) {
 
     const saveInterval = setInterval(async () => {
       if (beingRef.current) {
-        const agent = (beingRef.current as any).agent;
         try {
+          const stateToSave = beingRef.current.saveState();
           await setDoc(doc(db, "agents", userId), {
-            rsi: {
-              purpose: agent.rsi.purpose,
-              narrative: agent.rsi.narrative,
-              integrity: agent.rsi.integrity,
-              wear: agent.rsi.wear,
-              stability: agent.rsi.stability,
-              coherence: agent.rsi.coherence,
-              agency: agent.rsi.agency
-            },
-            resonance: {
-              pressure: agent.resonance.pressure,
-              wear: agent.resonance.wear,
-              somaticPlasticity: agent.resonance.somaticPlasticity,
-              somaticDepletion: agent.resonance.somaticDepletion,
-              socialCount: agent.resonance.socialCount,
-              soloCount: agent.resonance.soloCount,
-              dailyNeedMet: agent.resonance.dailyNeedMet
-            },
-            trace: (beingRef.current as any).trace || "",
-            secret: (beingRef.current as any).secret || "",
+            ...stateToSave,
             lastUpdated: serverTimestamp()
           }, { merge: true });
         } catch (error) {
@@ -108,7 +75,9 @@ export function useAgent(userId?: string) {
           }]);
         }
         
-        beingRef.current.step(tick);
+        const stress = isShadowResonanceActive ? 0.4 + Math.random() * 0.3 : 0.05 + Math.random() * 0.05;
+        
+        beingRef.current.step(tick, stress);
         setBeingState(beingRef.current.getState());
         setTick(prev => prev + 1);
       }

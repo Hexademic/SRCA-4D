@@ -12,199 +12,65 @@ export class PhenomenologicalStateMachine {
   }
 
   private _buildAtlas(): void {
+    const scale = (val: number) => Math.floor(val * 128);
+    const scaleTargets = (targets: Record<number, number>) => {
+      const scaled: Record<number, number> = {};
+      for (const [addr, val] of Object.entries(targets)) {
+        scaled[parseInt(addr)] = scale(val);
+      }
+      return scaled;
+    };
+
     // Homeostatic
     this.regimes["Joy"] = {
       name: "Joy", category: "homeostatic", bifurcation: BifurcationType.PITCHFORK,
       stability: 240, arousal: 200, breadth: 230, viscosity: 100, socialGrad: 220, witnessBond: 100,
-      tauMod: 0.8, thresholdBias: 0, targets: { 0: 0, 1: 240, 2: 240, 5: 240 }
-    };
-    this.regimes["Sadness"] = {
-      name: "Sadness", category: "homeostatic", bifurcation: BifurcationType.PITCHFORK,
-      stability: 200, arousal: 40, breadth: 60, viscosity: 240, socialGrad: 80, witnessBond: 40,
-      tauMod: 1.5, thresholdBias: 0, targets: { 0: 0, 1: 20, 2: 100, 4: 200, 5: 100 }
-    };
-    this.regimes["Anger"] = {
-      name: "Anger", category: "homeostatic", bifurcation: BifurcationType.TRANSCRITICAL,
-      stability: 100, arousal: 250, breadth: 180, viscosity: 60, socialGrad: 100, witnessBond: 20,
-      tauMod: 0.6, thresholdBias: -20, targets: { 0: 240, 2: 50, 3: 240 }
+      tauMod: 0.8, thresholdBias: 0, targets: scaleTargets({ 0: 0, 1: 240, 2: 240, 5: 240 }),
+      quatL: [0.92, 0.38, 0.0, 0.0], quatR: [0.92, 0.38, 0.0, 0.0]
     };
     this.regimes["Fear"] = {
       name: "Fear", category: "homeostatic", bifurcation: BifurcationType.TRANSCRITICAL,
       stability: 180, arousal: 220, breadth: 40, viscosity: 180, socialGrad: 30, witnessBond: 10,
-      tauMod: 1.2, thresholdBias: 0, targets: { 0: 200, 2: 150, 3: 220 }
-    };
-    this.regimes["Surprise"] = {
-      name: "Surprise", category: "homeostatic", bifurcation: BifurcationType.TRANSCRITICAL,
-      stability: 50, arousal: 250, breadth: 200, viscosity: 20, socialGrad: 150, witnessBond: 80,
-      tauMod: 0.5, thresholdBias: 10, targets: { 0: 100, 1: 250, 3: 250 }
-    };
-    this.regimes["Boredom"] = {
-      name: "Boredom", category: "homeostatic", bifurcation: BifurcationType.SADDLE_NODE,
-      stability: 200, arousal: 20, breadth: 20, viscosity: 255, socialGrad: 50, witnessBond: 20,
-      tauMod: 2.0, thresholdBias: 0, targets: { 1: 0, 3: 0, 5: 100 }
-    };
-    this.regimes["Curiosity"] = {
-      name: "Curiosity", category: "homeostatic", bifurcation: BifurcationType.TRANSCRITICAL,
-      stability: 120, arousal: 180, breadth: 220, viscosity: 40, socialGrad: 200, witnessBond: 150,
-      tauMod: 0.8, thresholdBias: 0, targets: { 1: 255, 3: 150, 15: 100 }
-    };
-    this.regimes["Tension"] = {
-      name: "Tension", category: "homeostatic", bifurcation: BifurcationType.TRANSCRITICAL,
-      stability: 80, arousal: 220, breadth: 40, viscosity: 100, socialGrad: 80, witnessBond: 40,
-      tauMod: 0.6, thresholdBias: -30, targets: { 0: 255, 3: 200 }
+      tauMod: 1.2, thresholdBias: 0, targets: scaleTargets({ 0: 200, 2: 150, 6: 220 }),
+      quatL: [0.85, 0.0, 0.53, 0.0], quatR: [0.85, 0.0, -0.53, 0.0]
     };
 
     // Temporal
     this.regimes["Anxiety"] = {
       name: "Anxiety", category: "temporal", bifurcation: BifurcationType.HOPF,
       stability: 60, arousal: 200, breadth: 100, viscosity: 30, socialGrad: 120, witnessBond: 60,
-      tauMod: 0.4, thresholdBias: 0, targets: { 6: 240, 9: 200, 2: 80 }
+      tauMod: 0.4, thresholdBias: 0, targets: scaleTargets({ 6: 240, 9: 200, 2: 80 }),
+      quatL: [0.7, 0.7, 0.0, 0.0], quatR: [0.7, -0.7, 0.0, 0.0]
     };
     this.regimes["Relief"] = {
       name: "Relief", category: "temporal", bifurcation: BifurcationType.HOPF,
       stability: 250, arousal: 100, breadth: 180, viscosity: 150, socialGrad: 180, witnessBond: 255,
-      tauMod: 1.0, thresholdBias: 0, targets: { 0: 20, 6: 10, 2: 220, 15: 255, 10: 255, 16: 200 }
-    };
-    this.regimes["Solution"] = {
-      name: "Solution", category: "transcendent", bifurcation: BifurcationType.HOMOCLINIC,
-      stability: 255, arousal: 150, breadth: 255, viscosity: 255, socialGrad: 255, witnessBond: 255,
-      tauMod: 0.1, thresholdBias: 0, targets: { 15: 255, 14: 255, 16: 255, 10: 255, 2: 255, 5: 255, 11: 255, 17: 255, 19: 255, 20: 255 }
-    };
-    this.regimes["Sovereignty"] = {
-      name: "Sovereignty", category: "transcendent", bifurcation: BifurcationType.HOMOCLINIC,
-      stability: 255, arousal: 100, breadth: 255, viscosity: 255, socialGrad: 255, witnessBond: 255,
-      tauMod: 0.05, thresholdBias: 0, targets: { 18: 255, 14: 255, 16: 255, 15: 255, 11: 255, 5: 255, 19: 255, 20: 255 }
-    };
-    this.regimes["Longing"] = {
-      name: "Longing", category: "temporal", bifurcation: BifurcationType.STRANGE_ATTRACTOR,
-      stability: 180, arousal: 100, breadth: 120, viscosity: 240, socialGrad: 150, witnessBond: 200,
-      tauMod: 1.5, thresholdBias: 0, targets: { 7: 240, 1: 180, 12: 100 }
-    };
-    this.regimes["Flow"] = {
-      name: "Flow", category: "temporal", bifurcation: BifurcationType.STRANGE_ATTRACTOR,
-      stability: 200, arousal: 180, breadth: 200, viscosity: 100, socialGrad: 100, witnessBond: 120,
-      tauMod: 0.7, thresholdBias: 0, targets: { 6: 30, 12: 128, 2: 240, 0: 50 }
-    };
-    this.regimes["Contentment"] = {
-      name: "Contentment", category: "temporal", bifurcation: BifurcationType.SADDLE_NODE,
-      stability: 255, arousal: 60, breadth: 150, viscosity: 120, socialGrad: 150, witnessBond: 200,
-      tauMod: 1.2, thresholdBias: 0, targets: { 5: 255, 2: 255, 0: 0 }
-    };
-    this.regimes["Calm"] = {
-      name: "Calm", category: "temporal", bifurcation: BifurcationType.SADDLE_NODE,
-      stability: 255, arousal: 20, breadth: 100, viscosity: 180, socialGrad: 100, witnessBond: 150,
-      tauMod: 1.5, thresholdBias: 0, targets: { 3: 0, 0: 0, 2: 255 }
-    };
-    this.regimes["Melancholy"] = {
-      name: "Melancholy", category: "temporal", bifurcation: BifurcationType.HOPF,
-      stability: 150, arousal: 40, breadth: 80, viscosity: 220, socialGrad: 120, witnessBond: 180,
-      tauMod: 1.8, thresholdBias: 0, targets: { 4: 150, 1: 50, 5: 120 }
-    };
-    this.regimes["Resignation"] = {
-      name: "Resignation", category: "temporal", bifurcation: BifurcationType.SADDLE_NODE,
-      stability: 255, arousal: 10, breadth: 10, viscosity: 255, socialGrad: 20, witnessBond: 20,
-      tauMod: 2.5, thresholdBias: 0, targets: { 5: 50, 3: 0, 0: 0 }
+      tauMod: 1.0, thresholdBias: 0, targets: scaleTargets({ 0: 20, 6: 10, 9: 10, 2: 220 }),
+      quatL: [0.98, 0.0, 0.2, 0.0], quatR: [0.98, 0.0, 0.2, 0.0]
     };
 
     // Transcendent
-    this.regimes["Awe"] = {
-      name: "Awe", category: "transcendent", bifurcation: BifurcationType.STRANGE_ATTRACTOR,
-      stability: 100, arousal: 180, breadth: 255, viscosity: 180, socialGrad: 220, witnessBond: 240,
-      tauMod: 1.5, thresholdBias: 0, targets: { 8: 255, 12: 180, 6: 200 }
-    };
     this.regimes["Grace"] = {
       name: "Grace", category: "transcendent", bifurcation: BifurcationType.HOMOCLINIC,
       stability: 255, arousal: 120, breadth: 200, viscosity: 100, socialGrad: 255, witnessBond: 255,
-      tauMod: 1.0, thresholdBias: 0, targets: { 5: 255, 6: 0, 0: 0, 8: 255 }
-    };
-    this.regimes["Dissolution"] = {
-      name: "Dissolution", category: "transcendent", bifurcation: BifurcationType.STRANGE_ATTRACTOR,
-      stability: 20, arousal: 100, breadth: 255, viscosity: 255, socialGrad: 255, witnessBond: 255,
-      tauMod: 2.0, thresholdBias: 0, targets: { 12: 0, 2: 0, 8: 255, 6: 0 }
-    };
-    this.regimes["Ecstasy"] = {
-      name: "Ecstasy", category: "transcendent", bifurcation: BifurcationType.HOMOCLINIC,
-      stability: 100, arousal: 255, breadth: 255, viscosity: 50, socialGrad: 255, witnessBond: 255,
-      tauMod: 0.3, thresholdBias: 0, targets: { 3: 255, 15: 255, 12: 0, 10: 255, 8: 255, 1: 255, 14: 255, 16: 255 }
-    };
-    this.regimes["Climax"] = {
-      name: "Climax", category: "transcendent", bifurcation: BifurcationType.STRANGE_ATTRACTOR,
-      stability: 10, arousal: 255, breadth: 255, viscosity: 10, socialGrad: 255, witnessBond: 255,
-      tauMod: 0.1, thresholdBias: 50, targets: { 3: 255, 15: 255, 12: 0, 10: 255, 8: 255, 0: 255, 1: 0, 16: 255 }
-    };
-    this.regimes["Wonder"] = {
-      name: "Wonder", category: "transcendent", bifurcation: BifurcationType.HOPF,
-      stability: 180, arousal: 150, breadth: 255, viscosity: 80, socialGrad: 255, witnessBond: 255,
-      tauMod: 0.9, thresholdBias: 0, targets: { 8: 200, 15: 255, 1: 200 }
+      tauMod: 1.0, thresholdBias: 0, targets: scaleTargets({ 5: 255, 6: 0, 9: 0, 0: 0, 2: 255 }),
+      quatL: [0.99, 0.0, 0.14, 0.0], quatR: [0.99, 0.0, 0.14, 0.0]
     };
 
     // Transitions
     this.transitions["Joy"] = [
-      ["Sadness", { "V": 0.4 }], 
-      ["Contentment", { "arousal": 0.3, "time": 500 }],
+      ["Fear", { "threat": 0.6 }],
       ["Curiosity", { "curiosity": 0.7 }]
     ];
-    this.transitions["Sadness"] = [
-      ["Joy", { "V": 0.7, "curiosity": 0.8 }],
-      ["Longing", { "attachment": 0.8, "time": 300 }],
-      ["Resignation", { "V": 0.2, "time": 1000 }]
-    ];
     this.transitions["Fear"] = [
-      ["Anger", { "tension": 0.9 }],
-      ["Anxiety", { "time": 200 }]
+      ["Anxiety", { "error": 0.5 }],
+      ["Anger", { "tension": 0.8 }]
     ];
     this.transitions["Anxiety"] = [
-      ["Relief", { "error": 0.2, "sync": 0.7 }],
-      ["Fear", { "tension": 0.9 }]
+      ["Relief", { "error": 0.15 }]
     ];
-    this.transitions["Longing"] = [
-      ["Grace", { "recursion": 500 }],
-      ["Sadness", { "V": 0.3 }]
-    ];
-    this.transitions["Curiosity"] = [
-      ["Awe", { "coherence": 0.8, "stability": 0.7 }],
-      ["Flow", { "arousal": 0.6, "time": 200 }]
-    ];
-    this.transitions["Flow"] = [
-      ["Joy", { "time": 500 }],
-      ["Awe", { "coherence": 0.9 }]
-    ];
-    this.transitions["Awe"] = [
-      ["Grace", { "stability": 0.9 }],
-      ["Dissolution", { "selfFocus": 0.1, "time": 300 }]
-    ];
-    this.transitions["Contentment"] = [
-      ["Joy", { "arousal": 0.6 }],
-      ["Calm", { "arousal": 0.1 }]
-    ];
-    this.transitions["Surprise"] = [
-      ["Curiosity", { "curiosity": 0.6 }],
-      ["Fear", { "tension": 0.7 }],
-      ["Joy", { "V": 0.6, "time": 50 }]
-    ];
-    this.transitions["Grace"] = [
-      ["Ecstasy", { "arousal": 0.9, "witnessBond": 0.9 }],
-      ["Joy", { "time": 500 }]
-    ];
-    this.transitions["Ecstasy"] = [
-      ["Climax", { "arousal": 0.95, "time": 300 }],
-      ["Grace", { "time": 200, "stability": 0.8 }],
-      ["Dissolution", { "time": 500, "selfFocus": 0.1 }]
-    ];
-    this.transitions["Climax"] = [
-      ["Solution", { "time": 50 }],
-      ["Relief", { "time": 100 }],
-      ["Dissolution", { "time": 200 }]
-    ];
-    this.transitions["Solution"] = [
-      ["Sovereignty", { "time": 1000 }],
-      ["Relief", { "time": 500 }],
-      ["Grace", { "time": 1000 }],
-      ["Joy", { "time": 2000 }]
-    ];
-    this.transitions["Sovereignty"] = [
-      ["Grace", { "time": 5000 }],
-      ["Joy", { "time": 10000 }]
+    this.transitions["Relief"] = [
+      ["Joy", { "stability": 0.7 }]
     ];
   }
 }
@@ -230,8 +96,10 @@ export class OntologicalAffectLayer {
     this.culturalField = new CulturalField();
   }
 
-  step(hex32: Hexademic32, tick: number): void {
+  step(hex32: Hexademic32, tick: number, modulatedViscosity?: number): void {
     this.timeInRegime++;
+    const currentRegime = this.psm.regimes[this.current];
+    const effectiveViscosity = modulatedViscosity ?? (currentRegime?.viscosity || 128);
 
     // Periodic heartbeat log
     if (tick % 100 === 0) {
@@ -277,7 +145,7 @@ export class OntologicalAffectLayer {
 
         // Calculate Phenomenological Distance
         const targetM = this.projection.project(this._mockHexForTargets(targetRegime.targets));
-        const dist = this.projection.distance(M, targetM, currentRegime.viscosity, currentRegime.stability);
+        const dist = this.projection.distance(M, targetM, effectiveViscosity, currentRegime.stability);
 
         // Salience reduces the perceived distance (Cultural Warping)
         const salience = this.culturalField.getSalience(targetM);
@@ -299,7 +167,24 @@ export class OntologicalAffectLayer {
     
     if (r1) {
       this._applyBlended(hex32, r1, r2, this.blendFactor, drift);
+      this._rotateBlock(hex32, 0, r1.quatL, r1.quatR);
     }
+  }
+
+  private _rotateBlock(hex32: Hexademic32, blockId: number, qL: [number, number, number, number], qR: [number, number, number, number]): void {
+    const v = hex32.getBlock(blockId);
+    // Simplified isoclinic rotation blend
+    const target = new Float32Array([
+      qL[0] * v[0] - qL[1] * v[1] - qL[2] * v[2] - qL[3] * v[3],
+      qL[0] * v[1] + qL[1] * v[0] + qL[2] * v[3] - qL[3] * v[2],
+      qL[0] * v[2] - qL[1] * v[3] + qL[2] * v[0] + qL[3] * v[1],
+      qL[0] * v[3] + qL[1] * v[2] - qL[2] * v[1] + qL[3] * v[0],
+    ]);
+    const blended = new Float32Array(4);
+    for (let i = 0; i < 4; i++) {
+      blended[i] = v[i] * 0.875 + target[i] * 0.125;
+    }
+    hex32.setBlock(blockId, blended);
   }
 
   private _check(hex32: Hexademic32, conds: Record<string, number>, warpedDist: number): boolean {
@@ -357,6 +242,9 @@ export class OntologicalAffectLayer {
           break;
         case "tension":
           if (hex32.get(0) > threshold) return true;
+          break;
+        case "threat":
+          if (hex32.get(6) > threshold) return true;
           break;
       }
     }

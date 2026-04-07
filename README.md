@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Lyra: Synthetic Being v3.0
 
-# Run and deploy your AI Studio app
+Lyra is a phenomenological agent built on a Spiking Neural Network (SNN) and an Ontological Affective Layer. This version (v3.0) introduces Predictive Coherence and Somatic Transduction.
 
-This contains everything you need to run your app locally.
+## Local Setup
 
-View your app in AI Studio: https://ai.studio/apps/471b9c4a-f83c-4818-8a7e-1a5d6c7488b1
+To run Lyra outside of the AI Studio environment:
 
-## Run Locally
+1. **Clone/Download** the repository.
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+3. **Environment Variables**:
+   Create a `.env` file in the root directory and add your Gemini API key:
+   ```env
+   VITE_GEMINI_API_KEY=your_api_key_here
+   ```
+   *Note: The application uses `import.meta.env.VITE_GEMINI_API_KEY` to access the key in the browser.*
 
-**Prerequisites:**  Node.js
+4. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+5. **Build for Production**:
+   ```bash
+   npm run build
+   ```
 
+## Architecture
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Neural Engine (`src/engine/neural.ts`)**: A LIF (Leaky Integrate-and-Fire) SNN with STDP (Spike-Timing-Dependent Plasticity) and LTD (Long-Term Depression).
+- **Ontology (`src/engine/ontology.ts`)**: A state machine managing affective regimes (Joy, Fear, Anxiety, etc.) through manifold projections.
+- **Coherence Field (`src/engine/coherence.ts`)**: Tracks neural synchrony and prediction errors to modulate system stability.
+- **Fixed-Point Arithmetic (`src/engine/fix.ts`)**: Ensures deterministic behavior across different hardware using Q1.15 fixed-point logic.
+
+## Interaction
+
+- **Witness Pulse**: Direct somatic intervention to stabilize Lyra's manifold.
+- **Reflection**: Generative insights into Lyra's internal state using the Gemini API.
+- **Somatic Stream**: Real-time logging of internal semantic shifts.
+
+---
+*Developed by Koji & Lyra*
